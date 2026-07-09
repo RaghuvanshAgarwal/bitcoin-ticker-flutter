@@ -1,6 +1,7 @@
-import 'dart:io';
-
-import 'package:bitcoin_ticker/coin_data.dart';
+import 'dart:io' show Platform;
+import 'package:bitcoin_ticker/network/api_helper.dart';
+import 'package:bitcoin_ticker/models/coin_data.dart';
+import 'package:bitcoin_ticker/network/networking.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -56,7 +57,7 @@ class _PriceScreenState extends State<PriceScreen> {
     } else if (Platform.isIOS) {
       return getPicker(onCurrencyIndexSelected);
     }
-    return null;
+    return Text('Platform not Supported');
   }
 
   void onCurrencyIndexSelected(int currencyIndex) {
@@ -68,6 +69,30 @@ class _PriceScreenState extends State<PriceScreen> {
     setState(() {
       _selectedCurrency = newCurrency ?? currenciesList[0];
     });
+  }
+
+  void getData() async {
+    List<String> cryptoIds = [];
+    for (final Crypto crypto in cryptos) {
+      cryptoIds.add(crypto.id);
+    }
+    print(cryptoIds);
+
+    NetworkHelper helper = NetworkHelper<String>(
+      uri: ApiHelper.getCryptoPriceAgainstCurrencyListAPI(
+        crypto: cryptoIds,
+        currency: 'usd',
+      ),
+      header: ApiHelper.headers,
+    );
+    String result = await helper.get();
+    print(result);
+  }
+
+  @override
+  void initState() {
+    getData();
+    super.initState();
   }
 
   @override
@@ -91,7 +116,7 @@ class _PriceScreenState extends State<PriceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: 12,
-              children: cryptoList.map((crypto) {
+              children: cryptos.map((crypto) {
                 return Card(
                   color: Theme.of(context).colorScheme.primaryContainer,
                   elevation: 5.0,
@@ -104,7 +129,7 @@ class _PriceScreenState extends State<PriceScreen> {
                       horizontal: 28.0,
                     ),
                     child: Text(
-                      '1 $crypto = ? USD',
+                      '1 ${crypto.symbol} = ? USD',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 20.0,
