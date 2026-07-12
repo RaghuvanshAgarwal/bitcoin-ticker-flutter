@@ -1,7 +1,6 @@
 import 'dart:io' show Platform;
-import 'package:bitcoin_ticker/network/api_helper.dart';
+import 'package:bitcoin_ticker/controllers/price_screen_controller.dart';
 import 'package:bitcoin_ticker/models/coin_data.dart';
-import 'package:bitcoin_ticker/network/networking.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -11,13 +10,15 @@ class PriceScreen extends StatefulWidget {
 }
 
 class _PriceScreenState extends State<PriceScreen> {
-  String _selectedCurrency = currenciesList[0];
+  late final PriceScreenController controller = PriceScreenController(
+    priceScreen: widget,
+  );
 
   DropdownButton<String> getDropdownButton(
     Function(String?) onCurrencyNameSelected,
   ) {
     return DropdownButton<String>(
-      value: _selectedCurrency,
+      value: controller.selectedCurrency,
       items: currenciesList.map((currency) {
         return DropdownMenuItem<String>(
           child: Text(
@@ -67,32 +68,26 @@ class _PriceScreenState extends State<PriceScreen> {
   void onCurrencyNameSelected(String? newCurrency) {
     print(newCurrency);
     setState(() {
-      _selectedCurrency = newCurrency ?? currenciesList[0];
+      controller.onCurrencySelection(newCurrency ?? currenciesList[0]);
     });
-  }
-
-  void getData() async {
-    List<String> cryptoIds = [];
-    for (final Crypto crypto in cryptos) {
-      cryptoIds.add(crypto.id);
-    }
-    print(cryptoIds);
-
-    NetworkHelper helper = NetworkHelper<String>(
-      uri: ApiHelper.getCryptoPriceAgainstCurrencyListAPI(
-        crypto: cryptoIds,
-        currency: 'usd',
-      ),
-      header: ApiHelper.headers,
-    );
-    String result = await helper.get();
-    print(result);
   }
 
   @override
   void initState() {
-    getData();
+    controller.onCurrencySelection(currenciesList[0]);
+    controller.addListener(_onCurrencyPriceListUpdated);
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    controller.removeListener(_onCurrencyPriceListUpdated);
+    controller.dispose();
+    super.dispose();
+  }
+
+  void _onCurrencyPriceListUpdated() {
+    setState(() {});
   }
 
   @override
@@ -129,7 +124,7 @@ class _PriceScreenState extends State<PriceScreen> {
                       horizontal: 28.0,
                     ),
                     child: Text(
-                      '1 ${crypto.symbol} = ? USD',
+                      '1 ${crypto.symbol} = ${!controller.hasPriceOfCrypto(crypto.id) ? '?' : controller.getPriceOfCrypto(crypto.id)} ${controller.selectedCurrency}',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 20.0,
